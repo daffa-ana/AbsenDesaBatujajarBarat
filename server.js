@@ -14,7 +14,7 @@ const { spawn } = require('node:child_process');
 const store = require('./db');
 
 const PORT = Number(process.env.PORT || 3000);
-const HOST = '127.0.0.1';
+const HOST = '0.0.0.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const COOKIE = 'absen_sesi';
 const SESSION_TTL = 12 * 60 * 60 * 1000;
