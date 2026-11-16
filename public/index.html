@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14503B">
+  <title>Absen Desa — Batujajar Barat</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- ================= HALAMAN MASUK ================= -->
+  <section class="auth" id="login" hidden>
+    <div class="auth-side">
+      <div class="auth-brand">
+        <span class="brand-mark">A</span>
+        <div>
+          <div class="brand-name">Absen Desa</div>
+          <div class="brand-sub">Kehadiran pegawai</div>
+        </div>
+      </div>
+      <div class="auth-quote">
+        <p>Kehadiran yang tertib, pelayanan yang pasti.</p>
+        <span data-village>Pemerintah Desa</span>
+      </div>
+      <div class="auth-foot">
+        <span data-village>Pemerintah Desa</span>
+        <span class="dotsep"></span>
+        <span id="auth-date"></span>
+      </div>
+    </div>
+
+    <div class="auth-form-wrap">
+      <form class="auth-form" id="login-form" autocomplete="on">
+        <div class="eyebrow">Panel admin</div>
+        <h1>Masuk untuk<br>memulai absensi</h1>
+        <p class="auth-sub">Satu laptop, satu admin. Semua pencatatan kehadiran pegawai dilakukan dari halaman ini.</p>
+
+        <label class="field">
+          <span class="field-label">Nama pengguna</span>
+          <input class="input" type="text" value="admin" readonly aria-readonly="true">
+        </label>
+
+        <label class="field">
+          <span class="field-label">Kata sandi</span>
+          <input class="input" type="password" id="login-password" placeholder="Masukkan kata sandi" autocomplete="current-password" maxlength="200" required>
+        </label>
+
+        <p class="form-error" id="login-error" hidden></p>
+
+        <button class="btn btn-primary btn-block" type="submit" id="login-submit">Masuk ke panel</button>
+
+        <p class="auth-hint" id="login-hint" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+          Kata sandi awal <strong>admin123</strong> — segera ganti di menu Pengaturan → Keamanan.
+        </p>
+
+        <p class="auth-note">Aplikasi berjalan lokal di laptop ini. Tidak ada data yang dikirim ke internet.</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= APLIKASI ================= -->
+  <div class="shell" id="app" hidden>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <div class="brand-text">
+          <div class="brand-name">Absen Desa</div>
+          <div class="brand-sub" id="side-village">Pemerintah Desa</div>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <div class="nav-label">Menu</div>
+        <a href="#absensi" data-view="absensi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span>Absensi</span>
+        </a>
+        <a href="#pegawai" data-view="pegawai">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M17 11a3 3 0 1 0 0-6"/><path d="M21 20v-1.5a4 4 0 0 0-3-3.87"/></svg>
+          <span>Pegawai</span>
+        </a>
+        <a href="#rekap" data-view="rekap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-6"/><path d="M21 20H3"/></svg>
+          <span>Rekap</span>
+        </a>
+        <a href="#pengaturan" data-view="pengaturan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.7 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.7 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.7a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15.1 4.7a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.3 9v0c.14.62.66 1.08 1.3 1.1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
+          <span>Pengaturan</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="admin-card">
+          <span class="avatar avatar-sm" id="admin-avatar">A</span>
+          <div class="admin-meta">
+            <strong id="admin-name">Administrator</strong>
+            <span>Akses admin</span>
+          </div>
+          <button class="icon-btn" id="logout-btn" title="Keluar" aria-label="Keluar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+        <div class="side-note">Data tersimpan di laptop ini</div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="crumb"><span>Panel admin</span><i>/</i><strong id="crumb-view">Absensi</strong></div>
+        <div class="topbar-right">
+          <div class="top-date" id="top-date"></div>
+          <span class="top-sep"></span>
+          <div class="top-clock" id="top-clock">--:--</div>
+          <button class="refresh-btn" id="refresh-btn" title="Muat ulang data">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3.4-7"/><path d="M21 3v6h-6"/></svg>
+          </button>
+          <button class="icon-btn" id="theme-btn" title="Ganti tema" aria-label="Ganti tema">
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="view" id="view"></main>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+  <div id="modal-root"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

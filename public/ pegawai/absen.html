@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#14503B">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Absen Pegawai — Batujajar Barat</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body { margin: 0; min-height: 100vh; background: #f5f7f6; font-family: 'Plus Jakarta Sans', system-ui; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .header { background: #14503B; color: white; padding: 16px 20px; position: sticky; top: 0; z-index: 10; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+    .header .user { font-size: 12px; opacity: .9; }
+    .clock { font-size: 36px; font-weight: 700; font-family: 'Fraunces', serif; text-align: center; margin: 8px 0; text-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    .date { text-align: center; font-size: 13px; opacity: .9; }
+    .main { flex: 1; padding: 20px; max-width: 480px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+    .status-card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,.08); margin-bottom: 20px; text-align: center; }
+    .status-card.already { background: linear-gradient(135deg, #e6efe4 0%, #d8e8d4 100%); border: 2px solid #3f8a5f; }
+    .status-icon { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 36px; }
+    .status-icon.done { background: #3f8a5f; color: white; }
+    .status-icon.pending { background: #fff3cd; color: #856404; }
+    .status-label { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .status-time { font-size: 14px; color: #666; }
+    .form-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #333; }
+    .select { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; background: white; }
+    .photo-section { margin-top: 16px; }
+    .photo-preview { width: 100%; max-height: 280px; border-radius: 12px; object-fit: cover; display: none; box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+    .photo-placeholder { width: 100%; height: 200px; border: 2px dashed #ddd; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #999; cursor: pointer; transition: all .2s; background: #fafafa; }
+    .photo-placeholder:hover { border-color: #14503B; color: #14503B; background: #eef5ef; }
+    .photo-placeholder.has-photo { border-style: solid; border-color: #14503B; background: white; }
+    .photo-placeholder svg { width: 48px; height: 48px; margin-bottom: 8px; }
+    .photo-placeholder input { display: none; }
+    .btn-primary { width: 100%; padding: 16px; background: #14503B; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: 700; cursor: pointer; }
+    .btn-primary:disabled { background: #999; cursor: not-allowed; }
+    .btn-primary.loading { background: #1a3a2a; }
+    .gps-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; background: #e6efe4; color: #14503B; border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 12px; }
+    .gps-badge.getting { background: #fff3cd; color: #856404; }
+    .gps-badge.error { background: #fdeaea; color: #c0392b; }
+    .gps-badge svg { width: 16px; height: 16px; }
+    .footer { padding: 20px; text-align: center; font-size: 12px; color: #999; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; z-index: 100; display: none; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
+    .toast.show { display: block; animation: slideUp .3s; }
+    .toast.success { background: #3f8a5f; }
+    .toast.error { background: #c0392b; }
+    @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    .logout-link { display: block; margin-top: 16px; text-align: center; color: #14503B; font-size: 13px; text-decoration: none; }
+    .hidden { display: none !important; }
+    .keterangan-field { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; min-height: 80px; box-sizing: border-box; resize: vertical; font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-top">
+        <h1>Absen Pegawai</h1>
+        <span class="user" id="user-info">Memuat…</span>
+      </div>
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="date" id="date">Memuat…</div>
+    </header>
+
+    <main class="main">
+      <div class="status-card" id="status-card">
+        <div class="status-icon pending" id="status-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+        </div>
+        <div class="status-label" id="status-label">Belum Absen Hari Ini</div>
+        <div class="status-time" id="status-time">Tekan tombol di bawah untuk mulai absen</div>
+      </div>
+
+      <div class="form-card" id="form-card">
+        <div class="form-group">
+          <label>Status Kehadiran</label>
+          <select class="select" id="status-select">
+            <option value="HADIR">Hadir</option>
+            <option value="TERLAMBAT">Terlambat</option>
+            <option value="IZIN">Izin</option>
+            <option value="SAKIT">Sakit</option>
+            <option value="CUTI">Cuti</option>
+            <option value="DINAS">Dinas Luar</option>
+          </select>
+        </div>
+
+        <div class="form-group photo-section">
+          <label>Foto Bukti (Wajib)</label>
+          <div class="photo-placeholder" id="photo-placeholder" onclick="document.getElementById('photo-input').click()">
+            <input type="file" id="photo-input" accept="image/*" capture="environment">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="12" r="4"/></svg>
+            <span id="photo-text">Ketuk untuk ambil foto / pilih galeri</span>
+          </div>
+          <img class="photo-preview" id="photo-preview" alt="Preview foto">
+        </div>
+
+        <div class="form-group">
+          <label>Keterangan (Opsional)</label>
+          <textarea class="keterangan-field" id="keterangan" placeholder="Contoh: Rapat di kantor kecamatan, sakit demam, dll" maxlength="200"></textarea>
+        </div>
+
+        <div class="gps-badge hidden" id="gps-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span id="gps-text">Mendeteksi lokasi…</span>
+        </div>
+
+        <button class="btn-primary" id="btn-absen" disabled>
+          <span id="btn-text">Ambil Lokasi Dulu…</span>
+        </button>
+
+        <a href="#" class="logout-link" id="logout-link">Keluar (Ganti Akun)</a>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div>Absen Desa Batujajar Barat</div>
+      <div>Data tersimpan di server aman</div>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // --- Token & Auth ---
+    const TOKEN = localStorage.getItem('absen_token');
+    const EMP = JSON.parse(localStorage.getItem('absen_emp') || 'null');
+    if (!TOKEN || !EMP) window.location.href = '/pegawai/login.html';
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+    // --- UI Elements ---
+    const statusCard = $('#status-card');
+    const statusIcon = $('#status-icon');
+    const statusLabel = $('#status-label');
+    const statusTime = $('#status-time');
+    const formCard = $('#form-card');
+    const statusSelect = $('#status-select');
+    const photoPlaceholder = $('#photo-placeholder');
+    const photoPreview = $('#photo-preview');
+    const photoInput = $('#photo-input');
+    const photoText = $('#photo-text');
+    const keterangan = $('#keterangan');
+    const gpsBadge = $('#gps-badge');
+    const gpsText = $('#gps-text');
+    const btnAbsen = $('#btn-absen');
+    const btnText = $('#btn-text');
+    const toast = $('#toast');
+    const clock = $('#clock');
+    const dateEl = $('#date');
+    const userInfo = $('#user-info');
+    const logoutLink = $('#logout-link');
+
+    // --- State ---
+    let photoData = null;
+    let gpsData = null;
+    let gpsGot = false;
+
+    // --- Init ---
+    userInfo.textContent = `${EMP.nama} · ${EMP.nip}`;
+    startClock();
+    checkStatus();
+    initPhoto();
+    getGPS();
+    initLogout();
+
+    function startClock() {
+      const tick = () => {
+        const now = new Date();
+        clock.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+        dateEl.textContent = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      };
+      tick(); setInterval(tick, 1000);
+    }
+
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/abs/me', { headers: { 'Authorization': 'Bearer ' + TOKEN }});
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal');
+        if (data.record) {
+          showAlreadyAbsen(data.record);
+        }
+      } catch (ex) {
+        console.error(ex);
+        showToast('Gagal cek status: ' + ex.message, 'error');
+      }
+    }
+
+    function showAlreadyAbsen(record) {
+      statusCard.classList.add('already');
+      statusIcon.className = 'status-icon done';
+      statusIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+      statusLabel.textContent = 'Sudah Absen: ' + record.status;
+      statusTime.textContent = record.masuk ? `Masuk: ${record.masuk} WIB` + (record.pulang ? ` · Pulang: ${record.pulang} WIB` : '') : 'Catatan tersimpan';
+      formCard.classList.add('hidden');
+      btnAbsen.disabled = true;
+    }
+
+    function initPhoto() {
+      photoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) { showToast('File harus gambar', 'error'); return; }
+        if (file.size > 5 * 1024 * 1024) { showToast('Maksimal 5 MB', 'error'); return; }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          photoData = ev.target.result;
+          photoPreview.src = photoData;
+          photoPreview.classList.remove('hidden');
+          photoPlaceholder.classList.add('has-photo');
+          photoText.textContent = 'Foto terpilih ✓ (klik untuk ganti)';
+          checkReady();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function getGPS() {
+      gpsBadge.classList.remove('hidden', 'error');
+      gpsBadge.classList.add('getting');
+      gpsText.textContent = 'Mendeteksi lokasi…';
+
+      if (!navigator.geolocation) {
+        gpsFailed('Browser tidak support GPS');
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          gpsData = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+          gpsGot = true;
+          gpsBadge.classList.remove('getting');
+          gpsText.textContent = `Lokasi: ${gpsData.lat.toFixed(6)}, ${gpsData.lng.toFixed(6)} (±${Math.round(gpsData.accuracy)}m)`;
+          checkReady();
+        },
+        (err) => {
+          gpsFailed('Gagal dapat lokasi: ' + err.message);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    }
+
+    function gpsFailed(msg) {
+      gpsBadge.classList.remove('getting');
+      gpsBadge.classList.add('error');
+      gpsText.textContent = msg + ' — Coba refresh halaman';
+      gpsGot = false;
+      checkReady();
+    }
+
+    function checkReady() {
+      const hasPhoto = photoData !== null;
+      const hasGPS = gpsGot;
+      const ready = hasPhoto && hasGPS;
+      btnAbsen.disabled = !ready;
+      btnText.textContent = ready ? 'Kirim Absen Sekarang' : (!hasPhoto ? '📷 Foto wajib' : '📍 Tunggu GPS…');
+    }
+
+    async function submitAbsen() {
+      if (btnAbsen.disabled) return;
+      btnAbsen.disabled = true;
+      btnAbsen.classList.add('loading');
+      btnText.textContent = 'Mengirim…';
+
+      try {
+        // Upload photo first
+        let photoPath = null;
+        if (photoData) {
+          const res = await fetch('/api/abs/upload?filename=absen.jpg', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/octet-stream' },
+            body: dataURLtoBlob(photoData),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Upload gagal');
+          photoPath = data.photo_path;
+        }
+
+        // Submit absen
+        const res = await fetch('/api/abs/absen', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: statusSelect.value,
+            keterangan: keterangan.value.trim(),
+            photo_path: photoPath,
+            lat: gpsData?.lat,
+            lng: gpsData?.lng,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal absen');
+
+        showToast(`Berhasil absen ${data.status} pukul ${data.jam} ✓`, 'success');
+        setTimeout(() => {
+          showAlreadyAbsen(data.record);
+        }, 1500);
+
+      } catch (ex) {
+        showToast(ex.message, 'error');
+        btnAbsen.disabled = false;
+        btnAbsen.classList.remove('loading');
+        checkReady();
+      }
+    }
+
+    function dataURLtoBlob(dataURL) {
+      const arr = dataURL.split(','); const mime = arr[0].match(/:(.*?);/)[1]; const bstr = atob(arr[1]);
+      let n = bstr.length; const u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      return new Blob([u8arr], { type: mime });
+    }
+
+    function showToast(msg, type) {
+      toast.textContent = msg;
+      toast.className = 'toast show ' + type;
+      setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+
+    function initLogout() {
+      logoutLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.removeItem('absen_token');
+        localStorage.removeItem('absen_emp');
+        window.location.href = '/pegawai/login.html';
+      });
+    }
+
+    // Event listeners
+    btnAbsen.addEventListener('click', submitAbsen);
+    statusSelect.addEventListener('change', checkReady);
+  </script>
+</body>
+</html>

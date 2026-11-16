@@ -1,0 +1,12 @@
+{
+  "name": "absen-desa",
+  "version": "2.0.0",
+  "description": "Aplikasi absensi pegawai Desa Batujajar Barat - versi web hosting",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14503B">
+  <title>Absen Pegawai — Batujajar Barat</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #14503B 0%, #1a3a2a 100%); }
+    .login-card { background: white; padding: 40px 32px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.3); width: 100%; max-width: 400px; }
+    .login-card h1 { font-size: 24px; margin: 0 0 8px; color: #14503B; }
+    .login-card p { color: #666; font-size: 14px; margin: 0 0 24px; }
+    .field { margin-bottom: 16px; }
+    .field-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #333; }
+    .input { width: 100%; padding: 12px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+    .input:focus { outline: none; border-color: #14503B; }
+    .btn { width: 100%; padding: 12px; background: #14503B; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .btn:disabled { background: #999; cursor: not-allowed; }
+    .brand { text-align: center; margin-bottom: 24px; }
+    .brand .mark { width: 56px; height: 56px; background: #14503B; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; margin: 0 auto 12px; }
+    .brand .name { font-weight: 700; color: #14503B; }
+    .brand .sub { font-size: 12px; color: #666; }
+    .error { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
+    .hint { font-size: 12px; color: #888; margin-top: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="brand">
+      <div class="mark">A</div>
+      <div class="name">Absen Desa Batujajar Barat</div>
+      <div class="sub">Absen via HP</div>
+    </div>
+    <h1>Masuk ke Aplikasi Absen</h1>
+    <p>Masukkan NIP dan PIN Anda untuk absen.</p>
+    <form id="login-form" autocomplete="on">
+      <div class="field">
+        <span class="field-label">NIP / NIK</span>
+        <input class="input" type="text" id="nip" placeholder="Contoh: 12345678" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <span class="field-label">PIN (4–10 digit)</span>
+        <input class="input" type="password" id="pin" placeholder="Masukkan PIN" autocomplete="current-password" inputmode="numeric" maxlength="10" required>
+      </div>
+      <p class="error" id="login-error"></p>
+      <button class="btn" type="submit" id="login-submit">Masuk</button>
+    </form>
+    <p class="hint">Hubungi admin jika PIN tidak dikenal.</p>
+  </div>
+  <script>
+    const \$ = (s) => document.querySelector(s);
+    const form = \$('#login-form');
+    const err = \$('#login-error');
+    const btn = \$('#login-submit');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Memeriksa…';
+      try {
+        const res = await fetch('/api/abs/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nip: \$('#nip').value, pin: \$('#pin').value }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal masuk');
+        localStorage.setItem('absen_token', data.token);
+        localStorage.setItem('absen_emp', JSON.stringify(data.employee));
+        window.location.href = '/pegawai/absen.html';
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.style.display = 'block';
+        \$('#pin').value = '';
+        \$('#pin').focus();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Masuk';
+      }
+    });
+  </script>
+</body>
+</html>
