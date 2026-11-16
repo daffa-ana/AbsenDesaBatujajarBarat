@@ -333,6 +333,138 @@ function sessionSecret() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Pegawai Self-Service (Absen via HP)                                */
+/* ------------------------------------------------------------------ */
+
+function createPegawaiToken(employeeId) {
+  const payload = Buffer.from(JSON.stringify({ sub: employee_id, exp: Date.now() + 8 * 60 * 60 * 1000 })).toString('base64url');
+  const sig = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+function verifyPegawaiToken(token) {
+  if (!token || typeof token !== 'string') return null;
+  const [payload, signature] = token.split('.');
+  if (!payload || !signature) return null;
+  const expected = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (Number(data.exp) <= Date.now()) return null;
+    return Number(data.sub);
+  } catch {
+    return null;
+  }
+}
+
+function findEmployeeByNip(nip, { includePinHash = false } = {}) {
+  const cols = includePinHash ? '*' : 'id, nama, nip, jabatan, unit, aktif, created_at';
+  const row = db.prepare(`SELECT ${cols} FROM employees WHERE nip = ?`).get(String(nip || '').trim());
+  return row ? { ...row, aktif: !!row.aktif } : null;
+}
+
+function pegawaiAbsen({ employee_id, pin, status, keterangan, photo_path, lat, lng }) {
+  const employee = getEmployee(employee_id, { includePinHash: true });
+  if (!employee) throw Object.assign(new Error('Pegawai tidak ditemukan'), { status: 404 });
+  if (!employee.aktif) throw Object.assign(new Error('Pegawai sudah nonaktif'), { status: 400 });
+
+  if (employee.pin_hash) {
+    if (!pin) throw Object.assign(new Error('PIN wajib diisi'), { status: 401, code: 'PIN_REQUIRED' });
+    if (!verifyPin(employee_id, pin)) {
+      throw Object.assign(new Error('PIN salah'), { status: 401, code: 'PIN_INVALID' });
+    }
+  }
+
+  const settings = getSettings();
+  const now = new Date();
+  const tanggal = isoDate(now);
+  const jam = isoTime(now);
+  const record = getAttendance(employee_id, tanggal);
+
+  const allowed = ['HADIR', 'TERLAMBAT', 'IZIN', 'SAKIT', 'CUTI', 'DINAS', 'ALPA'];
+  if (!allowed.includes(status)) throw Object.assign(new Error('Status tidak valid'), { status: 400 });
+
+  let inTime = null;
+  let outTime = null;
+  if (status === 'HADIR' || status === 'TERLAMBAT') {
+    inTime = jam;
+    if (record && record.pulang) outTime = record.pulang;
+  }
+
+  const result = upsertAttendance({
+    employee_id,
+    tanggal,
+    status,
+    masuk: inTime,
+    pulang: outTime,
+    keterangan,
+    sumber: 'hp',
+    photo_path,
+    lat,
+    lng,
+  });
+
+  logAudit('absen_hp', `${employee.id} ${employee.nama} ${status} ${photo_path ? 'dengan foto' : ''}`, '');
+
+  return {
+    action: record ? 'update' : 'absen',
+    jam,
+    nama: employee.nama,
+    status,
+    tanggal,
+    photo_path,
+    lat,
+    lng,
+    record: result,
+  };
+}
+
+function pegawaiStatusHariIni(employee_id) {
+  const employee = getEmployee(employee_id);
+  if (!employee) throw Object.assign(new Error('Pegawai tidak ditemukan'), { status: 404 });
+  const record = getAttendance(employee_id, isoDate());
+  return {
+    employee: {
+      id: employee.id,
+      nama: employee.nama,
+      nip: employee.nip,
+      jabatan: employee.jabatan,
+      unit: employee.unit,
+      hasPin: !!employee.pin_hash,
+    },
+    record: record || null,
+    today: isoDate(),
+  };
+}
+
+function pegawaiRiwayat(employee_id, days = 30) {
+  const employee = getEmployee(employee_id);
+  if (!employee) throw Object.assign(new Error('Pegawai tidak ditemukan'), { status: 404 });
+  const today = isoDate();
+  const rows = db.prepare(
+    'SELECT * FROM attendance WHERE employee_id = ? AND tanggal >= ? ORDER BY tanggal DESC'
+  ).all(Number(employee_id), addDays(parseISO(today), -days).toISOString().slice(0, 10));
+  return { employee, records: rows, today };
+}
+
+function pegawaiSudahAbsen(employee_id) {
+  const record = getAttendance(employee_id, isoDate());
+  return !!record;
+}
+
+function saveUploadFile(employee_id, buffer, filename, mimetype) {
+  const uploadsDir = path.join(__dirname, 'public', 'uploads');
+  fs.mkdirSync(uploadsDir, { recursive: true, mode: 0o755 });
+  const ext = path.extname(filename || '').slice(0, 10) || '.jpg';
+  const safe = `absen_${employee_id}_${Date.now()}${ext}`;
+  const filePath = path.join(uploadsDir, safe);
+  fs.writeFileSync(filePath, buffer);
+  return path.join('uploads', safe);
+}
+
+/* ------------------------------------------------------------------ */
 /* Riwayat perubahan (audit)                                           */
 /* ------------------------------------------------------------------ */
 

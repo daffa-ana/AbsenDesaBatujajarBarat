@@ -65,6 +65,13 @@ function isAuthed(req) {
   return sessionValid(parseCookies(req)[COOKIE]);
 }
 
+function pegawaiAuthed(req) {
+  const header = req.headers['authorization'] || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (token) return store.verifyPegawaiToken(token);
+  return null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Utilitas HTTP                                                       */
 /* ------------------------------------------------------------------ */
@@ -194,64 +201,7 @@ async function handleApi(req, res, url) {
 
   /* ================= PEGAWAI SELF-SERVICE (Absen via HP) ================= */
 
-  if (route === '/abs' && method === 'POST') {
-    const body = await readBody(req);
-    const empId = pegawaiAuthed(req);
-    if (!empId) throw new HttpError('Belum masuk', 401);
-    const result = store.absen({
-      employee_id: empId,
-      pin: body.pin,
-      status: body.status,
-      keterangan: body.keterangan,
-      photo_path: body.photo_path,
-      lat: body.lat,
-      lng: body.lng,
-    });
-    return sendJSON(res, 200, result);
-  }
-
-  if (route === '/abs/upload' && method === 'POST') {
-    const empId = pegawaiAuthed(req);
-    if (!empId) throw new HttpError('Belum masuk', 401);
-    const chunks = [];
-    let size = 0;
-    await new Promise((resolve, reject) => {
-      req.on('data', (chunk) => {
-        size += chunk.length;
-        if (size > 5 * 1024 * 1024) { reject(new HttpError('File terlalu besar (maks 5MB)', 413)); req.destroy(); return; }
-        chunks.push(chunk);
-      });
-      req.on('end', resolve);
-      req.on('error', reject);
-    });
-    const buffer = Buffer.concat(chunks);
-    if (!buffer.length) throw new HttpError('File kosong');
-    const filename = url.searchParams.get('filename') || `absen_${empId}.jpg`;
-    const photoPath = store.saveUploadFile(empId, buffer, filename, req.headers['content-type'] || '');
-    return sendJSON(res, 200, { ok: true, photo_path: photoPath });
-  }
-
-  if (route === '/abs/me' && method === 'GET') {
-    const empId = pegawaiAuthed(req);
-    if (!empId) throw new HttpError('Belum masuk', 401);
-    const data = store.absenStatus(empId);
-    return sendJSON(res, 200, data);
-  }
-
-  if (route === '/abs/status' && method === 'GET') {
-    const empId = pegawaiAuthed(req);
-    if (!empId) throw new HttpError('Belum masuk', 401);
-    return sendJSON(res, 200, { sudahAbsen: store.absenSudah(empId) });
-  }
-
-  if (route === '/abs/riwayat' && method === 'GET') {
-    const empId = pegawaiAuthed(req);
-    if (!empId) throw new HttpError('Belum masuk', 401);
-    const days = num(url.searchParams.get('days')) || 30;
-    return sendJSON(res, 200, store.absenRiwayat(empId, days));
-  }
-
-  if (route === '/abs/login' && method === 'POST') {
+  if (route === '/pegawai/login' && method === 'POST') {
     const body = await readBody(req);
     const nip = String(body.nip || '').trim();
     const pin = String(body.pin || '').trim();
@@ -268,8 +218,66 @@ async function handleApi(req, res, url) {
     return sendJSON(res, 200, {
       ok: true,
       token,
-      employee: { id: emp.id, nama: empnama, nip: emp.nip, jabatan: emp.jabatan, unit: emp.unit },
+      employee: { id: emp.id, nama: emp.nama, nip: emp.nip, jabatan: emp.jabatan, unit: emp.unit },
     });
+  }
+
+  if (route === '/pegawai/me' && method === 'GET') {
+    const empId = pegawaiAuthed(req);
+    if (!empId) throw new HttpError('Belum masuk', 401);
+    const data = store.pegawaiStatusHariIni(empId);
+    return sendJSON(res, 200, data);
+  }
+
+  if (route === '/pegawai/status' && method === 'GET') {
+    const empId = pegawaiAuthed(req);
+    if (!empId) throw new HttpError('Belum masuk', 401);
+    return sendJSON(res, 200, { sudahAbsen: store.pegawaiSudahAbsen(empId) });
+  }
+
+  if (route === '/pegawai/riwayat' && method === 'GET') {
+    const empId = pegawaiAuthed(req);
+    if (!empId) throw new HttpError('Belum masuk', 401);
+    const days = num(url.searchParams.get('days')) || 30;
+    return sendJSON(res, 200, store.pegawaiRiwayat(empId, days));
+  }
+
+  if (route === '/pegawai/absen' && method === 'POST') {
+    const empId = pegawaiAuthed(req);
+    if (!empId) throw new HttpError('Belum masuk', 401);
+    const body = await readBody(req);
+    const result = store.pegawaiAbsen({
+      employee_id: empId,
+      pin: body.pin,
+      status: body.status,
+      keterangan: body.keterangan,
+      photo_path: body.photo_path,
+      lat: body.lat,
+      lng: body.lng,
+    });
+    return sendJSON(res, 200, result);
+  }
+
+  if (route === '/pegawai/upload' && method === 'POST') {
+    const empId = pegawaiAuthed(req);
+    if (!empId) throw new HttpError('Belum masuk', 401);
+    const chunks = [];
+    let size = 0;
+    const contentType = req.headers['content-type'] || '';
+    await new Promise((resolve, reject) => {
+      req.on('data', (chunk) => {
+        size += chunk.length;
+        if (size > 5 * 1024 * 1024) { reject(new HttpError('File terlalu besar (maks 5MB)', 413)); req.destroy(); return; }
+        chunks.push(chunk);
+      });
+      req.on('end', resolve);
+      req.on('error', reject);
+    });
+    const buffer = Buffer.concat(chunks);
+    if (!buffer.length) throw new HttpError('File kosong');
+    const filename = url.searchParams.get('filename') || `absen_${empId}.jpg`;
+    const photoPath = store.saveUploadFile(empId, buffer, filename, contentType);
+    return sendJSON(res, 200, { ok: true, photo_path: photoPath });
   }
 
   /* --- semua rute di bawah wajib login --- */
@@ -413,6 +421,9 @@ const MIME = {
 
 function serveStatic(req, res, url) {
   let pathname = decodeURIComponent(url.pathname);
+  // Pegawai routes
+  if (pathname === '/pegawai' || pathname === '/pegawai/') pathname = '/pegawai/login.html';
+  if (pathname === '/pegawai/absen' || pathname === '/pegawai/absen/') pathname = '/pegawai/absen.html';
   if (pathname === '/') pathname = '/index.html';
   const filePath = path.normalize(path.join(PUBLIC_DIR, pathname));
   if (!filePath.startsWith(PUBLIC_DIR)) {
